@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<title>EA 3: Farbig gefüllte 2D Geometrie</title>
+
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --soft: #f5f5f5;
+    --primary: #1a1a1a;
+    --primary-dark: #000000;
+    --primary-light: #ededed;
+    --accent: #2a2a2a;
+    --success: #2e7d32;
+    --success-bg: #e8f5e9;
+    --error: #c62828;
+    --error-bg: #ffebee;
+    --warn: #ef6c00;
+    --warn-bg: #fff3e0;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --border: #d4d4d4;
+    --border-strong: #1a1a1a;
+    --shadow: 0 1px 2px rgba(0,0,0,.05);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  header {
+    background: #1a1a1a;
+    color: #fff;
+    padding: 2.5rem 1.5rem 2rem;
+    border-bottom: 1px solid #000;
+  }
+  header .wrap { max-width: 1080px; margin: 0 auto; }
+  header h1 { margin: 0 0 .35rem; font-size: 1.85rem; font-weight: 600; }
+  header p { margin: 0; opacity: .92; font-size: 1rem; }
+  header .meta {
+    margin-top: 1rem; font-size: .85rem; opacity: .75;
+    display: flex; flex-wrap: wrap; gap: .25rem 1rem;
+  }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  section { margin-bottom: 3rem; }
+
+  h2 {
+    font-size: 1.35rem; margin: 0 0 1rem;
+    padding-bottom: .5rem; border-bottom: 1px solid var(--border);
+  }
+  h2 .num {
+    display: inline-block; background: #1a1a1a; color: #fff;
+    border-radius: 2px; padding: .15rem .55rem; margin-right: .55rem;
+    font-size: .85rem; vertical-align: middle; letter-spacing: .03em;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid #1a1a1a;
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    padding: 1rem 1.1rem 1.1rem;
+    margin-bottom: 1.25rem;
+  }
+  .card h4 { margin: 0 0 .35rem; font-size: .95rem; font-weight: 600; }
+  .card .sub { font-size: .82rem; color: var(--text-muted); margin: 0 0 .65rem; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+  .btn {
+    display: inline-block; padding: .5rem 1rem;
+    background: #1a1a1a; color: #fff;
+    border: 1px solid #1a1a1a; border-radius: 2px;
+    font-size: .9rem; font-weight: 500; cursor: pointer;
+    transition: background .15s, color .15s;
+    font-family: inherit;
+  }
+  .btn:hover, .btn.is-pressed { background: #fff; color: #1a1a1a; }
+  .btn:focus-visible { outline: 2px solid #1a1a1a; outline-offset: 2px; }
+  .btn:disabled { background: #fff; color: var(--text-muted); border-color: var(--border); cursor: not-allowed; }
+  .btn.secondary { background: #fff; color: #1a1a1a; }
+  .btn.secondary:hover, .btn.secondary.is-pressed { background: #1a1a1a; color: #fff; }
+  .btn kbd { margin-left: .35rem; }
+
+  .global-status {
+    background: var(--soft); color: var(--text);
+    border-left: 3px solid #1a1a1a;
+    padding: .65rem 1rem; border-radius: 0;
+    font-size: .9rem; margin-bottom: 1.25rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .global-status.is-ready { background: var(--success-bg); border-left-color: var(--success); }
+  .global-status.is-error { background: var(--error-bg); border-left-color: var(--error); color: var(--error); }
+  .global-status.is-warn  { background: var(--warn-bg);  border-left-color: var(--warn); }
+
+  .statline {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.5rem; margin: 0 0 1rem;
+    font-size: .9rem; font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .statline b { font-weight: 600; }
+
+  /* Bühne für ein Sprite: <img> mit Sprite-Sheet, sichtbar ist nur ein Einzelbild */
+  .stage {
+    display: flex; justify-content: center;
+    background: var(--soft); border: 1px solid var(--border); border-radius: 4px;
+    padding: 1.25rem; margin-bottom: 1rem;
+  }
+  .sprite {
+    position: relative; overflow: hidden;
+    width: min(280px, 100%); aspect-ratio: 1 / 1;
+  }
+  .sprite img {
+    position: absolute; top: 0; left: 0; display: block;
+    max-width: none; height: auto;
+    user-select: none; -webkit-user-drag: none; pointer-events: none;
+    will-change: transform; visibility: hidden;
+  }
+  .sprite.is-loaded img { visibility: visible; }
+  .sprite.bunny { width: min(240px, 100%); }
+  .sprite.is-failed::after {
+    content: "Bild nicht verfügbar"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--error); font-size: .9rem;
+  }
+
+  .prose { max-width: 740px; }
+  .prose p { margin: 0 0 .75rem; }
+  .prose ul { padding-left: 1.4rem; margin: 0 0 1rem; }
+  .prose li { margin-bottom: .35rem; }
+  .prose a { color: #1a1a1a; text-decoration-thickness: 1px; }
+  .prose a:hover { text-decoration-thickness: 2px; }
+  .prose code { background: var(--soft); padding: 0 .3rem; border-radius: 3px; font-size: .9em; }
+
+  table.key-table { border-collapse: collapse; margin: .5rem 0 1rem; font-size: .9rem; width: 100%; }
+  table.key-table th, table.key-table td { border: 1px solid var(--border); padding: .4rem .7rem; text-align: left; }
+  table.key-table th { background: var(--soft); font-weight: 600; }
+  table.key-table td:first-child { white-space: nowrap; width: 1%; }
+
+  kbd {
+    display: inline-block; padding: .05rem .35rem; background: var(--soft);
+    border: 1px solid var(--border); border-radius: 3px; font-size: .78rem; color: var(--text);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  footer { border-top: 1px solid var(--border); padding-top: 1.5rem; font-size: .85rem; color: var(--text-muted); }
+
+  @media (max-width: 720px) {
+    header h1 { font-size: 1.5rem; }
+    main { padding: 1.5rem 1rem 3rem; }
+  }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+  /* Kontextsensitive Hilfe (ISO 9241-110) */
+  .help { position: relative; display: inline-block; margin-left: .5rem; vertical-align: middle; }
+  .help-btn {
+    width: 1.4rem; height: 1.4rem; padding: 0;
+    border: 1px solid var(--border-strong); background: #fff; color: var(--text);
+    border-radius: 50%; font-size: .8rem; font-weight: 600; cursor: help; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .help-btn:hover, .help-btn:focus-visible { background: var(--text); color: #fff; outline: none; }
+  .help-popover {
+    display: none; position: absolute; top: calc(100% + .35rem); left: 50%; transform: translateX(-50%);
+    width: min(360px, 80vw); background: #fff; color: var(--text);
+    border: 1px solid var(--border-strong); border-radius: 4px;
+    padding: .7rem .85rem; font-size: .85rem; line-height: 1.45;
+    box-shadow: var(--shadow-lg); z-index: 10; text-align: left; font-weight: normal;
+  }
+  .help-popover::before {
+    content: ""; position: absolute; top: -7px; left: 50%; transform: translateX(-50%) rotate(45deg);
+    width: 12px; height: 12px; background: #fff;
+    border-left: 1px solid var(--border-strong); border-top: 1px solid var(--border-strong);
+  }
+  .help.is-open .help-popover { display: block; }
+  .help-popover h4 { margin: 0 0 .35rem; font-size: .9rem; font-weight: 600; }
+  .help-popover p { margin: 0 0 .35rem; }
+  .help-popover p:last-child { margin-bottom: 0; }
+
+
+  /* Zeichenfläche für das WebGL-Motiv */
+  .canvas-frame {
+    display: flex; justify-content: center;
+    background: #0b1026; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1rem; margin-bottom: 1rem;
+  }
+  .canvas-frame canvas {
+    display: block; width: min(760px, 100%); height: auto; aspect-ratio: 1 / 1;
+  }
+  .prose h3 { font-size: 1.05rem; margin: 1.2rem 0 .5rem; }
+  .prose pre {
+    background: var(--soft); border: 1px solid var(--border); border-radius: 3px;
+    padding: .7rem .9rem; overflow-x: auto; font-size: .82rem; line-height: 1.45;
+  }
+  .table-wrap { overflow-x: auto; }
+  table.key-table td.num, table.key-table th.num { text-align: right; }
+  table.key-table td:first-child { width: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>EA 3: Farbig gefüllte 2D Geometrie</h1>
+    <p>Dieselbe Mandala-Rosette wie in EA 2, nun aus farbig gefüllten Dreiecken mit einfarbigen Flächen und Farbverläufen, gezeichnet mit rohem WebGL.</p>
+    <div class="meta">
+      <span>Hamid Mergan</span>
+      <span>TH Lübeck</span>
+      <span>Modul Graphical Visualisation Technologies</span>
+      <span>Wintersemester 2026/27</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <div id="globalStatus" class="global-status" role="status" aria-live="polite">Initialisiere WebGL …</div>
+
+  <section aria-labelledby="a1">
+    <h2 id="a1"><span class="num">A1</span>Mandala aus gefüllten Dreiecken
+      <span class="help">
+        <button type="button" class="help-btn" aria-label="Hilfe zu A1" aria-expanded="false">?</button>
+        <span class="help-popover" role="tooltip">
+          <h4>Hinweis zur Darstellung</h4>
+          <p>Das Motiv besteht nur aus Dreiecken und wird einmal beim Laden gezeichnet. Es gibt keine Interaktion. Die Zahlen unter der Grafik werden aus den tatsächlich gezeichneten Daten berechnet.</p>
+        </span>
+      </span>
+    </h2>
+    <div class="card">
+      <h4>Farbige Mandala-Rosette</h4>
+      <p class="sub">Dasselbe Motiv wie in EA 2, nun mit einfarbigen Flächen und Farbverläufen aus Dreiecken (<code>TRIANGLES</code> mit <code>drawElements</code>).</p>
+      <div class="canvas-frame">
+        <canvas id="glCanvas" width="1200" height="1200" role="img" aria-label="Zwölfzählige Mandala-Rosette aus farbig gefüllten Flächen auf dunklem Grund"></canvas>
+      </div>
+      <div class="statline" aria-label="Kennzahlen der Geometrie">
+        <span><b>Vertices:</b> <span id="infoVerts">…</span></span>
+        <span><b>Dreiecke:</b> <span id="infoTris">…</span></span>
+        <span><b>Indizes (drawElements):</b> <span id="infoIdx">…</span></span>
+        <span><b>Draw-Calls:</b> 1</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="a2">
+    <h2 id="a2"><span class="num">A2</span>Farbgebung
+      <span class="help">
+        <button type="button" class="help-btn" aria-label="Hilfe zu A2" aria-expanded="false">?</button>
+        <span class="help-popover" role="tooltip">
+          <h4>Flächen und Verläufe</h4>
+          <p>Einfarbig ist eine Fläche, wenn alle ihre Vertices dieselbe Farbe haben. Ein Farbverlauf entsteht, wenn die Vertices verschiedene Farben haben, denn die Rasterisierung interpoliert die Farbe linear über das Dreieck.</p>
+        </span>
+      </span>
+    </h2>
+    <div class="prose">
+      <p>Die Geometrie ist dieselbe Rosette wie in EA 2, die Linienumrisse sind jetzt Flächen aus Dreiecken. Die Farbe wird pro Vertex gespeichert und in der Rasterisierung über jedes Dreieck interpoliert.</p>
+      <ul>
+        <li><b>Einfarbige Flächen:</b> das Ringband (abwechselnd Gold und Creme, je Segment gleiche Farbe an allen vier Ecken) und die Mittelpunkte der Rosette.</li>
+        <li><b>Radiale Verläufe:</b> der Hintergrundkreis und die Bögen sind Dreiecksfächer. Der Fächermittelpunkt hat eine helle, der Rand eine dunklere Farbe. Auch die Zacken, die beiden Sterne und die kleinen Kreise sind solche Fächer.</li>
+        <li><b>Längsverläufe mit Glanzlinie:</b> jedes Blütenblatt ist ein Streifen aus Dreiecken mit je drei Vertices pro Querschnitt (links, Achse, rechts). Die Farbe läuft von der Basis zur Spitze, die Achse ist heller und erzeugt eine Kante in der Mitte.</li>
+      </ul>
+      <p>Die Reihenfolge der Dreiecke im Index-Array legt fest, was oben liegt. Es gibt keinen Tiefentest, spätere Dreiecke überdecken frühere (Malerreihenfolge): Hintergrund, Ringband, Zacken, Bögen, schmale Blätter, große Blätter, innere Blätter, Kern.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="a3">
+    <h2 id="a3"><span class="num">A3</span>Datenstruktur und Draw-Call
+      <span class="help">
+        <button type="button" class="help-btn" aria-label="Hilfe zu A3" aria-expanded="false">?</button>
+        <span class="help-popover" role="tooltip">
+          <h4>Arrays und drawElements</h4>
+          <p>Vertex-, Color- und Index-Array müssen zusammenpassen: Zu jedem Vertex gehört genau eine Farbe, und jeder Index muss auf einen vorhandenen Vertex zeigen. Der count von drawElements ist die Anzahl der Indizes.</p>
+        </span>
+      </span>
+    </h2>
+    <div class="prose">
+      <p>Die Daten liegen in drei Arrays, die als Buffer in die Grafikkarte geladen werden:</p>
+      <ul>
+        <li><b>Vertex-Array</b> (<code>Float32Array</code>, <code>ARRAY_BUFFER</code>): <code>[x0, y0, x1, y1, …]</code>, 2 Werte pro Vertex, Attribut <code>a_pos</code>.</li>
+        <li><b>Color-Array</b> (<code>Float32Array</code>, <code>ARRAY_BUFFER</code>): <code>[r0, g0, b0, r1, g1, b1, …]</code>, 3 Werte pro Vertex, Attribut <code>a_color</code>. Der Vertex-Shader reicht sie als <code>varying</code> an den Fragment-Shader weiter, der den interpolierten Wert ausgibt.</li>
+        <li><b>Index-Array</b> (<code>Uint16Array</code>, <code>ELEMENT_ARRAY_BUFFER</code>): je drei Indizes bilden ein Dreieck. Gemeinsame Vertices (z. B. der Mittelpunkt eines Fächers) werden mehrfach referenziert.</li>
+      </ul>
+      <pre>gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0)
+// count = Anzahl der Indizes (3 pro Dreieck), nicht die Länge des Vertex-Arrays</pre>
+      <p>Beim Start wird geprüft, dass Color- und Vertex-Array zusammenpassen, die Indexzahl durch 3 teilbar ist und alle Indizes kleiner als die Vertexzahl sind. Bei einem Fehler erscheint eine Meldung in der Statuszeile. Der Canvas ist quadratisch (1200 × 1200 Pixel), Koordinaten liegen von -1 bis 1.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="a4">
+    <h2 id="a4"><span class="num">A4</span>Bedienung</h2>
+    <div class="prose">
+      <p>Diese Aufgabe verlangt keine Interaktion. Es gibt deshalb keine Tasten und keine Buttons. Die Grafik wird beim Laden der Seite gezeichnet.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="a5">
+    <h2 id="a5"><span class="num">A5</span>Material &amp; Quellen</h2>
+    <div class="prose">
+      <ul>
+        <li><b>Motiv:</b> selbst entworfen, aufbauend auf der Linien-Rosette aus EA 2. Es wurde kein fremdes Material übernommen.</li>
+        <li><b>Farben:</b> eigene Palette aus Gold, Koralle, Magenta, Türkis, Violett und Creme auf dunklem Grund.</li>
+        <li><b>Fremdmaterial:</b> keines. Es werden keine externen Bibliotheken, Schriften oder Bilder verwendet.</li>
+        <li><b>Technik:</b> reines HTML, CSS und JavaScript mit WebGL 1 ohne Framework. Vertex- und Fragment-Shader in GLSL ES 1.00. Grundlage sind die Lerneinheiten WGL, API, GEO und FRB.</li>
+        <li><b>Quelltext:</b> die für diese Aufgabe geschriebenen Stellen sind mit <code>// START EA3_GEFUELLTE_GEOMETRIE</code> und <code>// END EA3_GEFUELLTE_GEOMETRIE</code> markiert.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <p>Die Seite läuft vollständig im Browser. Es werden keine Daten an einen Server gesendet und nichts gespeichert. Es werden keine Dateien nachgeladen, die Geometrie entsteht beim Start im Programm.</p>
+  </footer>
+</main>
+
+<script>
+// START EA3_GEFUELLTE_GEOMETRIE
+(function () {
+  "use strict";
+
+  const statusEl = document.getElementById("globalStatus");
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = "global-status" + (kind ? " is-" + kind : "");
+  }
+
+  // ---------- Geometrie: Vertex-, Color- und Index-Array ----------
+  const DEG = Math.PI / 180;
+  const posList = [];   // x, y je Vertex
+  const colList = [];   // r, g, b je Vertex
+  const idxList = [];   // je drei Indizes ein Dreieck
+
+  function hex(h) {
+    return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+  }
+  function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  function pol(r, a) { return [r * Math.cos(a), r * Math.sin(a)]; }
+
+  // neuer Vertex mit Farbe, gibt den Index zurück
+  function vert(p, c) {
+    posList.push(p[0], p[1]);
+    colList.push(c[0], c[1], c[2]);
+    return posList.length / 2 - 1;
+  }
+  function tri(a, b, c) { idxList.push(a, b, c); }
+
+  // Dreiecksfächer: Mittelpunkt mit Farbe cc, Randpunkte pts mit Farben (Array oder eine Farbe)
+  function fan(center, cc, pts, rimCol) {
+    const c = vert(center, cc);
+    const rim = pts.map(function (p, i) { return vert(p, Array.isArray(rimCol[0]) ? rimCol[i] : rimCol); });
+    for (let i = 0; i < rim.length; i++) tri(c, rim[i], rim[(i + 1) % rim.length]);
+  }
+
+  function circlePts(r, n, a0) {
+    const pts = [];
+    for (let i = 0; i < n; i++) pts.push(pol(r, (a0 || 0) + 2 * Math.PI * i / n));
+    return pts;
+  }
+  function shift(pts, c) { return pts.map(function (p) { return [p[0] + c[0], p[1] + c[1]]; }); }
+
+  function disk(center, r, n, cc, ce) { fan(center, cc, shift(circlePts(r, n), center), ce); }
+
+  // Viereck zwischen zwei Radien und zwei Winkeln, Farben je Ecke
+  function quad(p0, p1, p2, p3, c0, c1, c2, c3) {
+    const a = vert(p0, c0), b = vert(p1, c1), c = vert(p2, c2), d = vert(p3, c3);
+    tri(a, b, c);
+    tri(a, c, d);
+  }
+
+  // Blütenblatt als Streifen: je Querschnitt links, Achse (heller), rechts
+  function petal(ang, r0, r1, wmax, n, cBase, cTip, shine) {
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const rows = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const r = r0 + (r1 - r0) * t;
+      const w = wmax * Math.sin(Math.PI * t) * (1 - 0.3 * t);
+      const edge = mix(cBase, cTip, t);
+      const mid = mix(edge, [1, 1, 1], shine);
+      rows.push([vert([r * ca - w * sa, r * sa + w * ca], edge),
+                 vert([r * ca, r * sa], mid),
+                 vert([r * ca + w * sa, r * sa - w * ca], edge)]);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = rows[i], b = rows[i + 1];
+      tri(a[0], a[1], b[1]); tri(a[0], b[1], b[0]);
+      tri(a[1], a[2], b[2]); tri(a[1], b[2], b[1]);
+    }
+  }
+
+  function buildGeometry() {
+    const C = {
+      violetC: hex("#4a2a8a"), violetE: hex("#141a4a"),
+      gold: hex("#f2b84b"), goldHi: hex("#ffe08a"), cream: hex("#fff3d6"), creamLo: hex("#f1dcae"),
+      tealD: hex("#1b7f8f"), mintHi: hex("#a6f2dc"), plumD: hex("#6a3fd0"), plumHi: hex("#d2c3ff"),
+      coral: hex("#ef5b5b"), amber: hex("#ff9f43"), roseHi: hex("#ffd3c4"),
+      magenta: hex("#c0268c"), sun: hex("#ffc533"), aqua: hex("#26b6b0"), aquaHi: hex("#d6fbf4"),
+      pink: hex("#ff6fa5")
+    };
+
+    // 1. Hintergrundscheibe mit radialem Verlauf
+    disk([0, 0], 0.945, 144, C.violetC, C.violetE);
+
+    // 2. Ringband: 96 einfarbige Segmente, abwechselnd Gold und Creme
+    for (let i = 0; i < 96; i++) {
+      const a0 = i * 3.75 * DEG, a1 = (i + 1) * 3.75 * DEG;
+      const col = i % 2 === 0 ? C.gold : C.cream;
+      quad(pol(0.945, a0), pol(0.97, a0), pol(0.97, a1), pol(0.945, a1), col, col, col, col);
+    }
+
+    // 3. Zackenkranz: 48 Dreiecke, Spitze innen, Verlauf von Basis zur Spitze
+    for (let k = 0; k < 48; k++) {
+      const dark = k % 2 === 0 ? C.tealD : C.plumD;
+      const light = k % 2 === 0 ? C.mintHi : C.plumHi;
+      const a = vert(pol(0.935, k * 7.5 * DEG), dark);
+      const b = vert(pol(0.935, (k + 1) * 7.5 * DEG), dark);
+      const c = vert(pol(0.88, (k + 0.5) * 7.5 * DEG), light);
+      tri(a, b, c);
+    }
+
+    // 4. Bogenkranz: 24 Halbkreis-Fächer über den Sehnen bei Radius 0,76
+    const rs = 0.76, arcN = 16;
+    for (let k = 0; k < 24; k++) {
+      const p0 = pol(rs, k * 15 * DEG), p1 = pol(rs, (k + 1) * 15 * DEG);
+      const mx = (p0[0] + p1[0]) / 2, my = (p0[1] + p1[1]) / 2;
+      const R = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / 2;
+      const et = [(p1[0] - p0[0]) / (2 * R), (p1[1] - p0[1]) / (2 * R)];
+      const mid = (k + 0.5) * 15 * DEG;
+      const eo = [Math.cos(mid), Math.sin(mid)];
+      const rim = [];
+      for (let j = 0; j <= arcN; j++) {
+        const s = Math.PI * j / arcN;
+        rim.push([mx - R * Math.cos(s) * et[0] + R * Math.sin(s) * eo[0],
+                  my - R * Math.cos(s) * et[1] + R * Math.sin(s) * eo[1]]);
+      }
+      const edge = k % 2 === 0 ? C.coral : C.amber;
+      const c = vert([mx, my], C.roseHi);
+      const ids = rim.map(function (p) { return vert(p, edge); });
+      for (let j = 0; j < arcN; j++) tri(c, ids[j], ids[j + 1]);
+      // kleine Scheibe in jedem Bogen
+      disk(pol(0.8, mid), 0.024, 12, C.cream, C.goldHi);
+    }
+
+    // 5. schmale Blätter (Achsen bei 15°, 45°, ...), Gold nach Creme
+    for (let k = 0; k < 12; k++) petal((k * 30 + 15) * DEG, 0.42, 0.74, 0.035, 10, C.gold, C.cream, 0.3);
+
+    // 6. große Blätter, Magenta nach Sonnengelb
+    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.28, 0.70, 0.085, 14, C.magenta, C.sun, 0.25);
+
+    // 7. innere Blätter, Türkis nach Aqua-Hell
+    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.34, 0.60, 0.045, 12, C.aqua, C.aquaHi, 0.3);
+
+    // 8. kleine Scheiben zwischen den Blättern
+    for (let k = 0; k < 24; k++) disk(pol(0.575, (k * 15 + 7.5) * DEG), 0.016, 8, C.plumHi, C.plumD);
+
+    // 9. Kernring (einfarbiges Ringband)
+    for (let i = 0; i < 96; i++) {
+      const a0 = i * 3.75 * DEG, a1 = (i + 1) * 3.75 * DEG;
+      quad(pol(0.26, a0), pol(0.272, a0), pol(0.272, a1), pol(0.26, a1), C.gold, C.gold, C.gold, C.gold);
+    }
+
+    // 10. Sterne mit 12 Spitzen (24 Ecken) als Fächer
+    function starRim(R, r) {
+      const pts = [];
+      for (let i = 0; i < 24; i++) pts.push(pol(i % 2 === 0 ? R : r, i * 15 * DEG + 7.5 * DEG));
+      return pts;
+    }
+    const starCols = function (tip, valley) {
+      const cols = [];
+      for (let i = 0; i < 24; i++) cols.push(i % 2 === 0 ? tip : valley);
+      return cols;
+    };
+    fan([0, 0], C.goldHi, starRim(0.25, 0.17), starCols(C.coral, C.amber));
+    fan([0, 0], C.aquaHi, starRim(0.15, 0.09), starCols(C.tealD, C.aqua));
+
+    // 11. Rosette im Kern und Mittelpunkt
+    for (let k = 0; k < 8; k++) petal(k * 45 * DEG, 0.02, 0.085, 0.028, 8, C.sun, C.pink, 0.3);
+    disk([0, 0], 0.02, 16, C.cream, C.gold);
+  }
+
+  buildGeometry();
+
+  const vertices = new Float32Array(posList);
+  const colors = new Float32Array(colList);
+  const indices = new Uint16Array(idxList);
+  const numVerts = vertices.length / 2;
+
+  // Konsistenzprüfung der Arrays
+  let maxIndex = 0;
+  for (let i = 0; i < indices.length; i++) if (indices[i] > maxIndex) maxIndex = indices[i];
+  const consistent = numVerts === colors.length / 3 && indices.length % 3 === 0 &&
+                     maxIndex < numVerts && numVerts <= 65536 && indices.length === idxList.length;
+
+  document.getElementById("infoVerts").textContent = numVerts;
+  document.getElementById("infoTris").textContent = indices.length / 3;
+  document.getElementById("infoIdx").textContent = indices.length;
+
+  if (!consistent) {
+    console.error("Arrays passen nicht zusammen", numVerts, colors.length / 3, indices.length, maxIndex);
+    setStatus("Fehler: Vertex-, Color- und Index-Array passen nicht zusammen.", "error");
+    return;
+  }
+
+  // ---------- WebGL ----------
+  const canvas = document.getElementById("glCanvas");
+  const gl = canvas.getContext("webgl", { antialias: true });
+  if (!gl) {
+    console.error("WebGL ist nicht verfügbar.");
+    setStatus("Fehler: Dieser Browser unterstützt WebGL nicht oder es ist deaktiviert.", "error");
+    return;
+  }
+
+  const VS = "attribute vec2 a_pos;\n" +
+             "attribute vec3 a_color;\n" +
+             "varying vec3 v_color;\n" +
+             "void main() {\n" +
+             "  v_color = a_color;\n" +
+             "  gl_Position = vec4(a_pos, 0.0, 1.0);\n" +
+             "}\n";
+  const FS = "precision mediump float;\n" +
+             "varying vec3 v_color;\n" +
+             "void main() { gl_FragColor = vec4(v_color, 1.0); }\n";
+
+  function compile(type, source) {
+    const sh = gl.createShader(type);
+    gl.shaderSource(sh, source);
+    gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      throw new Error((type === gl.VERTEX_SHADER ? "Vertex-Shader: " : "Fragment-Shader: ") + gl.getShaderInfoLog(sh));
+    }
+    return sh;
+  }
+
+  let program;
+  try {
+    program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, VS));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error("Link-Fehler: " + gl.getProgramInfoLog(program));
+  } catch (err) {
+    console.error(err);
+    setStatus("Fehler beim Erstellen der Shader. " + err.message, "error");
+    return;
+  }
+  gl.useProgram(program);
+
+  function attribute(name, data, size) {
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(program, name);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  }
+  attribute("a_pos", vertices, 2);
+  attribute("a_color", colors, 3);
+
+  const ibo = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0.043, 0.063, 0.149, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+  if (gl.getError() !== gl.NO_ERROR) {
+    setStatus("Fehler: WebGL meldet einen Fehler beim Zeichnen.", "error");
+  } else {
+    setStatus("Bereit. " + numVerts + " Vertices, " + indices.length / 3 + " Dreiecke, ein drawElements-Aufruf mit " + indices.length + " Indizes.", "ready");
+  }
+})();
+// END EA3_GEFUELLTE_GEOMETRIE
+
+
+// Hilfe-Popover
+document.querySelectorAll(".help").forEach(help => {
+  const btn = help.querySelector(".help-btn");
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    document.querySelectorAll(".help.is-open").forEach(h => { if (h !== help) { h.classList.remove("is-open"); h.querySelector(".help-btn").setAttribute("aria-expanded", "false"); } });
+    const open = help.classList.toggle("is-open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+});
+document.addEventListener("click", e => { if (!e.target.closest(".help")) document.querySelectorAll(".help.is-open").forEach(h => { h.classList.remove("is-open"); h.querySelector(".help-btn").setAttribute("aria-expanded", "false"); }); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll(".help.is-open").forEach(h => { h.classList.remove("is-open"); h.querySelector(".help-btn").setAttribute("aria-expanded", "false"); }); });
+</script>
+</body>
+</html>
