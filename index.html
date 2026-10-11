@@ -242,7 +242,7 @@
     </h2>
     <div class="card">
       <h4>Farbige Mandala-Rosette</h4>
-      <p class="sub">Dasselbe Motiv wie in EA 2, nun mit einfarbigen Flächen und Farbverläufen aus Dreiecken (<code>TRIANGLES</code> mit <code>drawElements</code>).</p>
+      <p class="sub">Dasselbe Motiv wie in EA 2, nun ausgemalt mit einfarbigen Flächen und Farbverläufen aus Dreiecken (<code>TRIANGLES</code> mit <code>drawElements</code>).</p>
       <div class="canvas-frame">
         <canvas id="glCanvas" width="1200" height="1200" role="img" aria-label="Zwölfzählige Mandala-Rosette aus farbig gefüllten Flächen auf dunklem Grund"></canvas>
       </div>
@@ -266,13 +266,13 @@
       </span>
     </h2>
     <div class="prose">
-      <p>Die Geometrie ist dieselbe Rosette wie in EA 2, die Linienumrisse sind jetzt Flächen aus Dreiecken. Die Farbe wird pro Vertex gespeichert und in der Rasterisierung über jedes Dreieck interpoliert.</p>
+      <p>Die Geometrie ist dieselbe Rosette wie in EA 2, die Linienumrisse sind jetzt Flächen aus Dreiecken. Jede Fläche trägt die Farbe der zugehörigen Linie aus EA 2 (Gold, Koralle, Magenta, Türkis, Mint, Violett, Creme), als Verlauf von einem dunkleren zu einem helleren Ton. Die Farbe wird pro Vertex gespeichert und in der Rasterisierung über jedes Dreieck interpoliert.</p>
       <ul>
-        <li><b>Einfarbige Flächen:</b> das Ringband (abwechselnd Gold und Creme, je Segment gleiche Farbe an allen vier Ecken) und die Mittelpunkte der Rosette.</li>
+        <li><b>Einfarbige Flächen:</b> das Ringband (abwechselnd Gold und Creme, je Segment gleiche Farbe an allen vier Ecken) mit seinen goldenen Randringen, der violette Sehnenring und der Kernring.</li>
         <li><b>Radiale Verläufe:</b> der Hintergrundkreis und die Bögen sind Dreiecksfächer. Der Fächermittelpunkt hat eine helle, der Rand eine dunklere Farbe. Auch die Zacken, die beiden Sterne und die kleinen Kreise sind solche Fächer.</li>
         <li><b>Längsverläufe mit Glanzlinie:</b> jedes Blütenblatt ist ein Streifen aus Dreiecken mit je drei Vertices pro Querschnitt (links, Achse, rechts). Die Farbe läuft von der Basis zur Spitze, die Achse ist heller und erzeugt eine Kante in der Mitte.</li>
       </ul>
-      <p>Die Reihenfolge der Dreiecke im Index-Array legt fest, was oben liegt. Es gibt keinen Tiefentest, spätere Dreiecke überdecken frühere (Malerreihenfolge): Hintergrund, Ringband, Zacken, Bögen, schmale Blätter, große Blätter, innere Blätter, Kern.</p>
+      <p>Die Reihenfolge der Dreiecke im Index-Array legt fest, was oben liegt. Es gibt keinen Tiefentest, spätere Dreiecke überdecken frühere (Malerreihenfolge): Hintergrund, Ringband, Zacken, Bögen, Sehnenring, schmale Blätter, große Blätter, innere Blätter, Kern.</p>
     </div>
   </section>
 
@@ -311,7 +311,7 @@
     <div class="prose">
       <ul>
         <li><b>Motiv:</b> selbst entworfen, aufbauend auf der Linien-Rosette aus EA 2. Es wurde kein fremdes Material übernommen.</li>
-        <li><b>Farben:</b> eigene Palette aus Gold, Koralle, Magenta, Türkis, Violett und Creme auf dunklem Grund.</li>
+        <li><b>Farben:</b> dieselbe Palette wie die Linienfarben in EA 2 (Gold, Koralle, Magenta, Türkis, Mint, Violett und Creme) auf dunklem Grund, pro Fläche als Verlauf zwischen einem dunkleren und einem helleren Ton.</li>
         <li><b>Fremdmaterial:</b> keines. Es werden keine externen Bibliotheken, Schriften oder Bilder verwendet.</li>
         <li><b>Technik:</b> reines HTML, CSS und JavaScript mit WebGL 1 ohne Framework. Vertex- und Fragment-Shader in GLSL ES 1.00. Grundlage sind die Lerneinheiten WGL, API, GEO und FRB.</li>
         <li><b>Quelltext:</b> die für diese Aufgabe geschriebenen Stellen sind mit <code>// START EA3_GEFUELLTE_GEOMETRIE</code> und <code>// END EA3_GEFUELLTE_GEOMETRIE</code> markiert.</li>
@@ -378,6 +378,14 @@
     tri(a, c, d);
   }
 
+  // Ringband zwischen zwei Radien aus n einfarbigen Segmenten
+  function ring(r0, r1, n, col) {
+    for (let i = 0; i < n; i++) {
+      const a0 = i * 2 * Math.PI / n, a1 = (i + 1) * 2 * Math.PI / n;
+      quad(pol(r0, a0), pol(r1, a0), pol(r1, a1), pol(r0, a1), col, col, col, col);
+    }
+  }
+
   // Blütenblatt als Streifen: je Querschnitt links, Achse (heller), rechts
   function petal(ang, r0, r1, wmax, n, cBase, cTip, shine) {
     const ca = Math.cos(ang), sa = Math.sin(ang);
@@ -401,16 +409,17 @@
 
   function buildGeometry() {
     const C = {
-      violetC: hex("#4a2a8a"), violetE: hex("#141a4a"),
-      gold: hex("#f2b84b"), goldHi: hex("#ffe08a"), cream: hex("#fff3d6"), creamLo: hex("#f1dcae"),
-      tealD: hex("#1b7f8f"), mintHi: hex("#a6f2dc"), plumD: hex("#6a3fd0"), plumHi: hex("#d2c3ff"),
-      coral: hex("#ef5b5b"), amber: hex("#ff9f43"), roseHi: hex("#ffd3c4"),
-      magenta: hex("#c0268c"), sun: hex("#ffc533"), aqua: hex("#26b6b0"), aquaHi: hex("#d6fbf4"),
-      pink: hex("#ff6fa5")
+      navyC: hex("#16204c"), navyE: hex("#0b1026"),
+      gold: hex("#f6c453"), goldHi: hex("#ffe49a"), cream: hex("#fff1d0"),
+      teal: hex("#3fc1c9"), tealLo: hex("#1f8f9c"), tealHi: hex("#bff3f1"),
+      coral: hex("#ff7a6b"), coralLo: hex("#e0554b"), coralHi: hex("#ffc2b3"),
+      magenta: hex("#ff5d9e"), magentaLo: hex("#b3246f"),
+      mint: hex("#7be0b5"), mintLo: hex("#3fae8a"), mintHi: hex("#dcfff0"),
+      violet: hex("#a58bff"), violetHi: hex("#e1d8ff")
     };
 
     // 1. Hintergrundscheibe mit radialem Verlauf
-    disk([0, 0], 0.945, 144, C.violetC, C.violetE);
+    disk([0, 0], 0.945, 144, C.navyC, C.navyE);
 
     // 2. Ringband: 96 einfarbige Segmente, abwechselnd Gold und Creme
     for (let i = 0; i < 96; i++) {
@@ -418,14 +427,14 @@
       const col = i % 2 === 0 ? C.gold : C.cream;
       quad(pol(0.945, a0), pol(0.97, a0), pol(0.97, a1), pol(0.945, a1), col, col, col, col);
     }
+    ring(0.945, 0.951, 144, C.gold);
+    ring(0.964, 0.97, 144, C.gold);
 
     // 3. Zackenkranz: 48 Dreiecke, Spitze innen, Verlauf von Basis zur Spitze
     for (let k = 0; k < 48; k++) {
-      const dark = k % 2 === 0 ? C.tealD : C.plumD;
-      const light = k % 2 === 0 ? C.mintHi : C.plumHi;
-      const a = vert(pol(0.935, k * 7.5 * DEG), dark);
-      const b = vert(pol(0.935, (k + 1) * 7.5 * DEG), dark);
-      const c = vert(pol(0.88, (k + 0.5) * 7.5 * DEG), light);
+      const a = vert(pol(0.935, k * 7.5 * DEG), C.tealLo);
+      const b = vert(pol(0.935, (k + 1) * 7.5 * DEG), C.tealLo);
+      const c = vert(pol(0.88, (k + 0.5) * 7.5 * DEG), C.tealHi);
       tri(a, b, c);
     }
 
@@ -444,31 +453,31 @@
         rim.push([mx - R * Math.cos(s) * et[0] + R * Math.sin(s) * eo[0],
                   my - R * Math.cos(s) * et[1] + R * Math.sin(s) * eo[1]]);
       }
-      const edge = k % 2 === 0 ? C.coral : C.amber;
-      const c = vert([mx, my], C.roseHi);
+      const edge = C.coral;
+      const c = vert([mx, my], C.coralHi);
       const ids = rim.map(function (p) { return vert(p, edge); });
       for (let j = 0; j < arcN; j++) tri(c, ids[j], ids[j + 1]);
       // kleine Scheibe in jedem Bogen
       disk(pol(0.8, mid), 0.024, 12, C.cream, C.goldHi);
     }
 
+    // Sehnenring unter den Bögen
+    ring(0.754, 0.766, 144, C.violet);
+
     // 5. schmale Blätter (Achsen bei 15°, 45°, ...), Gold nach Creme
     for (let k = 0; k < 12; k++) petal((k * 30 + 15) * DEG, 0.42, 0.74, 0.035, 10, C.gold, C.cream, 0.3);
 
-    // 6. große Blätter, Magenta nach Sonnengelb
-    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.28, 0.70, 0.085, 14, C.magenta, C.sun, 0.25);
+    // 6. große Blätter, dunkles Magenta nach hellem Magenta
+    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.28, 0.70, 0.085, 14, C.magentaLo, C.magenta, 0.25);
 
-    // 7. innere Blätter, Türkis nach Aqua-Hell
-    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.34, 0.60, 0.045, 12, C.aqua, C.aquaHi, 0.3);
+    // 7. innere Blätter, Mint
+    for (let k = 0; k < 12; k++) petal(k * 30 * DEG, 0.34, 0.60, 0.045, 12, C.mintLo, C.mintHi, 0.3);
 
     // 8. kleine Scheiben zwischen den Blättern
-    for (let k = 0; k < 24; k++) disk(pol(0.575, (k * 15 + 7.5) * DEG), 0.016, 8, C.plumHi, C.plumD);
+    for (let k = 0; k < 24; k++) disk(pol(0.575, (k * 15 + 7.5) * DEG), 0.016, 8, C.violetHi, C.violet);
 
     // 9. Kernring (einfarbiges Ringband)
-    for (let i = 0; i < 96; i++) {
-      const a0 = i * 3.75 * DEG, a1 = (i + 1) * 3.75 * DEG;
-      quad(pol(0.26, a0), pol(0.272, a0), pol(0.272, a1), pol(0.26, a1), C.gold, C.gold, C.gold, C.gold);
-    }
+    ring(0.26, 0.272, 96, C.gold);
 
     // 10. Sterne mit 12 Spitzen (24 Ecken) als Fächer
     function starRim(R, r) {
@@ -481,12 +490,12 @@
       for (let i = 0; i < 24; i++) cols.push(i % 2 === 0 ? tip : valley);
       return cols;
     };
-    fan([0, 0], C.goldHi, starRim(0.25, 0.17), starCols(C.coral, C.amber));
-    fan([0, 0], C.aquaHi, starRim(0.15, 0.09), starCols(C.tealD, C.aqua));
+    fan([0, 0], C.coralHi, starRim(0.25, 0.17), starCols(C.coral, C.coralLo));
+    fan([0, 0], C.tealHi, starRim(0.15, 0.09), starCols(C.teal, C.tealLo));
 
     // 11. Rosette im Kern und Mittelpunkt
-    for (let k = 0; k < 8; k++) petal(k * 45 * DEG, 0.02, 0.085, 0.028, 8, C.sun, C.pink, 0.3);
-    disk([0, 0], 0.02, 16, C.cream, C.gold);
+    for (let k = 0; k < 8; k++) petal(k * 45 * DEG, 0.02, 0.085, 0.028, 8, C.gold, C.cream, 0.3);
+    disk([0, 0], 0.02, 16, C.cream, C.goldHi);
   }
 
   buildGeometry();
